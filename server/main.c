@@ -18,13 +18,11 @@ struct AcceptedSocket{
 };
 
 struct AcceptedSocket * AcceptIncomingConnection(int server_socketFD);
-void RecieveAndPrintIncomingData(int socketFD);
+void *RecieveAndPrintIncomingData(void* socketFD);
 void StartAcceptingIncomingConnections(int *server_socketFD);
-void *AcceptIncomingConnectionWrapper(void *server_socketFD);
-void *RecieveAndPrintIncomingDataOnSeperateThread(void *accepted_socket_ptr);
+void RecieveAndPrintIncomingDataOnSeperateThread(int *p_socketFD);
 
 int main(){
- 
     int server_socketFD = CreateTCPIpv4Socket();
     struct sockaddr_in server_address;
     CreateTCPIpv4Address("", 2000, &server_address);
@@ -36,10 +34,7 @@ int main(){
 
     int listen_result = listen(server_socketFD, 10);
 
-    struct AcceptedSocket* client_socket = AcceptIncomingConnection(server_socketFD);
     StartAcceptingIncomingConnections(&server_socketFD);
-
-    RecieveAndPrintIncomingData(client_socket->accepted_socketFD);
 
     shutdown(server_socketFD, SHUT_RDWR);
 
@@ -47,19 +42,10 @@ int main(){
 }
 
 void StartAcceptingIncomingConnections(int* server_socketFD){
-    pthread_t id;
-    pthread_create(&id, NULL, AcceptIncomingConnectionWrapper, server_socketFD);
-
-    //struct AcceptedSocket * AcceptIncomingConnection(server_socketFD);
-}
-
-void *AcceptConnectionAndRecieveData(void* server_socketFD){
     while(true){
-        struct AcceptedSocket* client_socket = AcceptIncomingConnection(*((int *)server_socketFD));
-        RecieveAndPrintIncomingData(client_socket->accepted_socketFD);
-        close(client_socket->accepted_socketFD);
+        struct AcceptedSocket* client_socket = AcceptIncomingConnection(*server_socketFD);
+        RecieveAndPrintIncomingDataOnSeperateThread(&client_socket->accepted_socketFD);
     }
-    return 0;
 }
 
 struct AcceptedSocket * AcceptIncomingConnection(int server_socketFD){
@@ -75,14 +61,19 @@ struct AcceptedSocket * AcceptIncomingConnection(int server_socketFD){
     if(accepted_socket->accepted_successfully == false){
         accepted_socket->error = client_socketFD;
     }
-
     return accepted_socket;
 }
 
-void RecieveAndPrintIncomingData(int socketFD) {
+void RecieveAndPrintIncomingDataOnSeperateThread(int *p_socketFD){
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, RecieveAndPrintIncomingData, p_socketFD);
+    printf("Someone joined\n");
+}
+
+void *RecieveAndPrintIncomingData(void* socketFD) {
     char buffer[1024];
     while (true) {
-        ssize_t amount_recieved = recv(socketFD, buffer, 1024, 0);
+        ssize_t amount_recieved = recv(*((int *) socketFD), buffer, 1024, 0);
         if(amount_recieved > 0){
             buffer[amount_recieved] = '\0';
             printf("Response was: %s", buffer);
@@ -91,12 +82,5 @@ void RecieveAndPrintIncomingData(int socketFD) {
             break;
         }
     }
-}
-
-void *RecieveAndPrintIncomingDataOnSeperateThread(void *accepted_socket_ptr){
-    struct AcceptedSocket* client_socket = (struct AcceptedSocket*) accepted_socket_ptr;
-    RecieveAndPrintIncomingData(client_socket->accepted_socketFD);
-    close(client_socket->accepted_socketFD);
     return 0;
 }
-
