@@ -1,6 +1,8 @@
 #include "socketutil.h"
+#include <unistd.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <stdbool.h>
 
 int CreateTCPIpv4Socket(){
     return socket(AF_INET, SOCK_STREAM, 0);
@@ -17,3 +19,5 @@ void CreateTCPIpv4Address(char *ip, int port, struct sockaddr_in *address){
         inet_pton(AF_INET, ip, &address->sin_addr.s_addr);
     }
 }
+
+

@@ -1,1 +1,1 @@
-cc main.c ../SocketUtil/socketutil.c -o main
+cc main.c ../SocketUtil/socketutil.c -o client

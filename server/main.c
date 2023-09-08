@@ -16,11 +16,14 @@ struct AcceptedSocket{
     int error;
     bool accepted_successfully;
 };
+struct AcceptedSocket acceptedSockets[10];
+int acceptedSocketsCount = 0;
 
 struct AcceptedSocket * AcceptIncomingConnection(int server_socketFD);
 void *RecieveAndPrintIncomingData(void* socketFD);
 void StartAcceptingIncomingConnections(int *server_socketFD);
 void RecieveAndPrintIncomingDataOnSeperateThread(int *p_socketFD);
+void SendMessageToOtherClients(char* buffer, int sockFD);
 
 int main(){
     int server_socketFD = CreateTCPIpv4Socket();
@@ -61,6 +64,8 @@ struct AcceptedSocket * AcceptIncomingConnection(int server_socketFD){
     if(accepted_socket->accepted_successfully == false){
         accepted_socket->error = client_socketFD;
     }
+    acceptedSockets[acceptedSocketsCount] = *accepted_socket;
+    acceptedSocketsCount++;
     return accepted_socket;
 }
 
@@ -77,6 +82,7 @@ void *RecieveAndPrintIncomingData(void* socketFD) {
         if(amount_recieved > 0){
             buffer[amount_recieved] = '\0';
             printf("Response was: %s", buffer);
+            SendMessageToOtherClients(buffer, *((int *) socketFD));
         }
         if(amount_recieved == 0){
             break;
@@ -84,3 +90,12 @@ void *RecieveAndPrintIncomingData(void* socketFD) {
     }
     return 0;
 }
+
+void SendMessageToOtherClients(char* buffer, int sockFD){
+    for (int i = 0; i < acceptedSocketsCount; i++){
+        if(acceptedSockets[i].accepted_socketFD != sockFD){
+            send(acceptedSockets[i].accepted_socketFD, buffer, strlen(buffer), 0);
+        }
+    }
+}
+
