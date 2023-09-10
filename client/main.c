@@ -26,7 +26,14 @@ int main(){
         printf("connection successful\n");
     }
 
+    char buffer[1024];
+
     // SENDING AND RECIEVING DATA
+    char *name = NULL;
+    size_t name_size = 0;
+    printf("What is your name?\n");
+    ssize_t name_count = getline(&name, &name_size, stdin);
+    name[name_count-1] = '\0';
 
     char *line = NULL;
     size_t line_size = 0;
@@ -34,13 +41,17 @@ int main(){
 
     StartListeningAndPrintMessagesOnSeperateThread(&socketFD);
 
+
     while(true){
         ssize_t char_count = getline(&line, &line_size, stdin);
+        sprintf(buffer, "%s: %s", name, line);
         if (char_count > 0){
-            ssize_t amount_sent = send(socketFD, line, char_count, 0);
             if(strcmp(line, "exit\n") == 0){
+                sprintf(buffer, "%s left\n", name);
+                ssize_t amount_sent = send(socketFD, buffer, strlen(buffer), 0);
                 break;
             }
+            ssize_t amount_sent = send(socketFD, buffer, strlen(buffer), 0);
         }
     }
 
@@ -62,7 +73,7 @@ void* ListenAndPrint(void *void_socketFD){
         ssize_t amount_recieved = recv(socketFD, buffer, 1024, 0);
         if(amount_recieved > 0){
             buffer[amount_recieved] = '\0';
-            printf("Response was: %s", buffer);
+            printf("%s", buffer);
         }
         if(amount_recieved == 0){
             break;
