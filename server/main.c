@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <poll.h>
+
 
 #define NUM_OF_CLIENTS 10
 #define NOT_INITIALIZED 0
@@ -42,10 +44,15 @@ void CleanUp();
 
 bool exitDebug = true;
 
-int main(){
+int main(int argc, char *argv[]){
+    if (argc < 2){
+        printf("please provide a port number\n");
+        return 1;
+    }
+    int port = strtol(argv[1], NULL, 10);
     server_socketFD = CreateTCPIpv4Socket();
     struct sockaddr_in server_address;
-    CreateTCPIpv4Address("", 2000, &server_address);
+    CreateTCPIpv4Address("", port, &server_address);
 
     int bind_result = bind(server_socketFD, (const struct sockaddr*) &server_address, sizeof(server_address));
     if (bind_result == 0){
@@ -59,12 +66,11 @@ int main(){
         printf("thread id on clean %lu\n",threadIds[i]);
         printf("thread condition %d\n",threadCondition[i]);
         if(threadCondition[i] == JOIN){
-            printf("thread joined\n");
             if (pthread_join(threadIds[i], NULL) != 0){
                 printf("failed to join thread");
             }
             else{
-                printf("thread terminated\n");
+                printf("thread joined\n");
             }
         }
     }
@@ -89,29 +95,34 @@ void StartAcceptingIncomingConnections(int server_socketFD){
 }
 
 struct AcceptedSocket * AcceptIncomingConnection(int server_socketFD){
-    struct timeval timeout;
-    timeout.tv_sec = 5;
-    timeout.tv_usec = 0;
-
-    fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(server_socketFD, &readfds);
-
-    int result = select(server_socketFD + 1, &readfds, NULL, NULL, &timeout);
-
+    // Allocate memory for the AcceptedSocket structure
     struct AcceptedSocket* accepted_socket = malloc(sizeof (struct AcceptedSocket));
+    // Initialize accepted_successfully to false (default state)
     accepted_socket->accepted_successfully = false;
 
+    // Set up a file descriptor array for poll
+    struct pollfd fds[1];
+    fds[0].fd = server_socketFD;  // Set the file descriptor to monitor
+    fds[0].events = POLLIN;       // Monitor for readability
+
+    // Use poll to wait for events on the file descriptor
+    int result = poll(fds, 1, 2000); // Timeout is in milliseconds
+
+    // Handle potential errors
     if (result == -1) {
-        accepted_socket->error = -1; // Error in select
+        accepted_socket->error = -1;
+        printf("Error in poll\n");
     }
     else if (result == 0) {
-        accepted_socket->error = -2; // Timeout reached
-        printf("timeout\n");
+        accepted_socket->error = -2;
+        printf("Timeout reached\n");
     }
-    else {
+    else if (fds[0].revents & POLLIN) {
+        // If POLLIN event occurred, there's a connection waiting
         struct sockaddr_in client_address;
         socklen_t client_address_size = sizeof(struct sockaddr_in);
+
+        // Accept the connection
         int client_socketFD = accept(server_socketFD, (struct sockaddr*) &client_address, &client_address_size);
 
         if (client_socketFD > 0) {
@@ -123,12 +134,14 @@ struct AcceptedSocket * AcceptIncomingConnection(int server_socketFD){
             acceptedSockets[acceptedSocketsIndex] = *accepted_socket;
             acceptedSocketsIndex++;
             createNewThread = true;
+            printf("connection established\n");
         }
         else {
             accepted_socket->error = client_socketFD; // Error in accept
         }
     }
 
+    // Return the AcceptedSocket structure
     return accepted_socket;
 }
 //select
