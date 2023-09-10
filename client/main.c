@@ -7,18 +7,24 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <sys/types.h>
+#include <stdlib.h>
 #include "../SocketUtil/socketutil.h"
 
 void* ListenAndPrint(void *void_socketFD);
 void StartListeningAndPrintMessagesOnSeperateThread(int* socketFD);
 
-int main(){
-
+int main(int argc, char *argv[]){
+    if (argc < 3){
+        printf("please provide an ip and a port number\n");
+        return 1;
+    }
+    char *ip = argv[1];
+    int port = strtol(argv[2], NULL, 10);
     // ESTABLISHING CONNECTION
     int socketFD = CreateTCPIpv4Socket();
 
     struct sockaddr_in address;
-    CreateTCPIpv4Address("127.0.0.1", 2000, &address);
+    CreateTCPIpv4Address("127.0.0.1", port, &address);
 
     int result = connect(socketFD, (const struct sockaddr*) &address, sizeof(address));
 
