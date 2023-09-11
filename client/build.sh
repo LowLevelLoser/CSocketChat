@@ -1,1 +1,1 @@
-cc main.c ../SocketUtil/socketutil.c -o client
+cc main.c ../SocketUtil/socketutil.c -o client -lreadline

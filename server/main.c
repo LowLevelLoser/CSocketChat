@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include "../SocketUtil/socketutil.h"
+#include "../SocketUtil/tc.h"
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/time.h>
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]){
         }
     }
     shutdown(server_socketFD, SHUT_RDWR);
-    printf("everyone left\n");
+    printf("%severyone left%s\n",TC_RED,TC_NRM);
 
     return 0;
 }

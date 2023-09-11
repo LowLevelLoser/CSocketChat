@@ -8,7 +8,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <stdlib.h>
+#include <readline/readline.h>
 #include "../SocketUtil/socketutil.h"
+#include "../SocketUtil/tc.h"
 
 void* ListenAndPrint(void *void_socketFD);
 void StartListeningAndPrintMessagesOnSeperateThread(int* socketFD);
@@ -49,16 +51,18 @@ int main(int argc, char *argv[]){
 
 
     while(true){
-        ssize_t char_count = getline(&line, &line_size, stdin);
-        sprintf(buffer, "%s: %s", name, line);
-        if (char_count > 0){
-            if(strcmp(line, "exit\n") == 0){
-                sprintf(buffer, "%s left\n", name);
-                ssize_t amount_sent = send(socketFD, buffer, strlen(buffer), 0);
-                break;
-            }
+        line = readline("");
+        sprintf(buffer, "%s: %s\n", name, line);
+
+        if (strcmp(line, "exit") == 0) {
+            sprintf(buffer, "%s left\n", name);
             ssize_t amount_sent = send(socketFD, buffer, strlen(buffer), 0);
+            free(line);
+            break;
         }
+
+        ssize_t amount_sent = send(socketFD, buffer, strlen(buffer), 0);
+        free(line);
     }
 
     close(socketFD);
@@ -79,7 +83,7 @@ void* ListenAndPrint(void *void_socketFD){
         ssize_t amount_recieved = recv(socketFD, buffer, 1024, 0);
         if(amount_recieved > 0){
             buffer[amount_recieved] = '\0';
-            printf("%s", buffer);
+            printf("%s%s%s", TC_GRN, buffer, TC_NRM);
         }
         if(amount_recieved == 0){
             break;
